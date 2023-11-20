@@ -5,6 +5,21 @@ class DefinesDestructor {
 };
 // CHECK-MESSAGES: [[@LINE-3]]:7: warning: class 'DefinesDestructor' defines a destructor but does not define a copy constructor, a copy assignment operator, a move constructor or a move assignment operator [cppcoreguidelines-special-member-functions]
 
+namespace CustomNamespace {
+  class DefinesDestructor {
+    ~DefinesDestructor();
+  };
+  // CHECK-MESSAGES: [[@LINE-3]]:9: warning: class 'CustomNamespace::DefinesDestructor' defines a destructor but does not define a copy constructor, a copy assignment operator, a move constructor or a move assignment operator [cppcoreguidelines-special-member-functions]
+
+  template <typename T>
+  class WrapperClass {
+    class DefinesDestructor {
+      ~DefinesDestructor();
+    };
+    // CHECK-MESSAGES: [[@LINE-3]]:11: warning: class 'CustomNamespace::WrapperClass::DefinesDestructor' defines a destructor but does not define a copy constructor, a copy assignment operator, a move constructor or a move assignment operator [cppcoreguidelines-special-member-functions]
+  };
+}
+
 class DefinesDefaultedDestructor {
   ~DefinesDefaultedDestructor() = default;
 };

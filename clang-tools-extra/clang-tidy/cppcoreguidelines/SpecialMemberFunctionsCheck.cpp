@@ -98,7 +98,8 @@ void SpecialMemberFunctionsCheck::check(
   if (!MatchedDecl)
     return;
 
-  ClassDefId ID(MatchedDecl->getLocation(), std::string(MatchedDecl->getName()));
+  ClassDefId ID(MatchedDecl->getLocation(),
+                MatchedDecl->getQualifiedNameAsString());
 
   auto StoreMember = [this, &ID](SpecialMemberFunctionData Data) {
     llvm::SmallVectorImpl<SpecialMemberFunctionData> &Members =
