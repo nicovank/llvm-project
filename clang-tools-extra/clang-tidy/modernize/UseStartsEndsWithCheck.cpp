@@ -23,6 +23,7 @@ UseStartsEndsWithCheck::UseStartsEndsWithCheck(StringRef Name,
 
 void UseStartsEndsWithCheck::registerMatchers(MatchFinder *Finder) {
   const auto ZeroLiteral = integerLiteral(equals(0));
+
   const auto HasStartsWithMethodWithName = [](const std::string &Name) {
     return hasMethod(
         cxxMethodDecl(hasName(Name), isConst(), parameterCountIs(1))
@@ -35,6 +36,18 @@ void UseStartsEndsWithCheck::registerMatchers(MatchFinder *Finder) {
   const auto ClassWithStartsWithFunction = cxxRecordDecl(anyOf(
       HasStartsWithMethod, hasAnyBase(hasType(hasCanonicalType(hasDeclaration(
                                cxxRecordDecl(HasStartsWithMethod)))))));
+
+  const auto HasEndsWithMethodWithName = [](const std::string &Name) {
+    return hasMethod(
+        cxxMethodDecl(hasName(Name), isConst(), parameterCountIs(1))
+            .bind("ends_with_fun"));
+  };
+  const auto HasEndsWithMethod = anyOf(HasEndsWithMethodWithName("ends_with"),
+                                       HasEndsWithMethodWithName("endsWith"),
+                                       HasEndsWithMethodWithName("endswith"));
+  const auto ClassWithEndsWithFunction = cxxRecordDecl(anyOf(
+      HasEndsWithMethod, hasAnyBase(hasType(hasCanonicalType(hasDeclaration(
+                             cxxRecordDecl(HasEndsWithMethod)))))));
 
   const auto FindExpr = cxxMemberCallExpr(
       // A method call with no second argument or the second argument is zero...
@@ -109,11 +122,34 @@ void UseStartsEndsWithCheck::registerMatchers(MatchFinder *Finder) {
       // Bind search expression.
       hasArgument(2, expr().bind("search_expr")));
 
+  // Something of the form S.compare(X - Y, Y, T), where:
+  //  -  S is an object with an ends_with() method.
+  //  -  T is a string literal or an object with a size() or length() method.
+  //  -  X is the size of S.
+  //  -  Y is the size of T.
+  const auto EndsWithCompareExpr = cxxMemberCallExpr(
+      // A compare call with three arguments...
+      argumentCountIs(3),
+      callee(cxxMethodDecl(hasName("compare")).bind("find_fun")),
+      // ... where the first argument is a subtraction...
+      hasArgument(0, binaryOperator(hasOperatorName("-"),
+                                    hasOperands(expr().bind("size_expr"),// TODO: Make sure size-expr matches size of str.
+                                                expr().bind("offset_expr")))),
+      // ... the second argument matches the subtraction offset...
+    //   hasArgument(1, expr(equalsBoundNode("offset_expr"))),
+      // ... the third argument is a string of size matching second argument...
+      HasStringAndLengthArgs(2, 1),
+      // ... on a class with a ends_with function.
+      on(hasType(hasCanonicalType(hasDeclaration(ClassWithEndsWithFunction)))),
+      // Bind search expression.
+      hasArgument(2, expr().bind("search_expr")));
+
   Finder->addMatcher(
       // Match [=!]= with a zero on one side and (r?)find|compare on the other.
       binaryOperator(
           hasAnyOperatorName("==", "!="),
-          hasOperands(cxxMemberCallExpr(anyOf(FindExpr, RFindExpr, CompareExpr))
+          hasOperands(cxxMemberCallExpr(anyOf(FindExpr, RFindExpr, CompareExpr,
+                                              EndsWithCompareExpr))
                           .bind("find_expr"),
                       ZeroLiteral))
           .bind("expr"),
@@ -127,6 +163,11 @@ void UseStartsEndsWithCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *SearchExpr = Result.Nodes.getNodeAs<Expr>("search_expr");
   const auto *StartsWithFunction =
       Result.Nodes.getNodeAs<CXXMethodDecl>("starts_with_fun");
+  const auto *EndsWithFunction =
+      Result.Nodes.getNodeAs<CXXMethodDecl>("ends_with_fun");
+  assert(bool(StartsWithFunction) != bool(EndsWithFunction));
+  const CXXMethodDecl *ReplacementFunction =
+      StartsWithFunction ? StartsWithFunction : EndsWithFunction;
 
   const auto *StringLiteralArg =
       Result.Nodes.getNodeAs<StringLiteral>("string_literal_arg");
@@ -154,7 +195,7 @@ void UseStartsEndsWithCheck::check(const MatchFinder::MatchResult &Result) {
 
   auto Diagnostic =
       diag(FindExpr->getExprLoc(), "use %0 instead of %1() %select{==|!=}2 0")
-      << StartsWithFunction->getName() << FindFun->getName() << Neg;
+      << ReplacementFunction->getName() << FindFun->getName() << Neg;
 
   // Remove possible arguments after search expression and ' [!=]= 0' suffix.
   Diagnostic << FixItHint::CreateReplacement(
@@ -168,12 +209,12 @@ void UseStartsEndsWithCheck::check(const MatchFinder::MatchResult &Result) {
   Diagnostic << FixItHint::CreateRemoval(CharSourceRange::getCharRange(
       ComparisonExpr->getBeginLoc(), FindExpr->getBeginLoc()));
 
-  // Replace method name by 'starts_with'.
+  // Replace method name by '(starts|ends)_with'.
   // Remove possible arguments before search expression.
   Diagnostic << FixItHint::CreateReplacement(
       CharSourceRange::getCharRange(FindExpr->getExprLoc(),
                                     SearchExpr->getBeginLoc()),
-      (StartsWithFunction->getName() + "(").str());
+      (ReplacementFunction->getName() + "(").str());
 
   // Add possible negation '!'.
   if (Neg) {
