@@ -175,6 +175,12 @@ New checks
   removing now-unnecessary calls to ``std::string::c_str()`` and
   ``std::string::data()``.
 
+- New :doc:`performance-avoid-const-ref-copy
+  <clang-tidy/checks/performance/avoid-const-ref-copy>` check.
+
+  Finds cases of taking a parameter by const reference and then copying it,
+  without any further usage.
+
 - New :doc:`readability-enum-initial-value
   <clang-tidy/checks/readability/enum-initial-value>` check.
 

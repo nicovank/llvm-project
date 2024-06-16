@@ -321,6 +321,7 @@ Clang-Tidy Checks
    :doc:`objc-super-self <objc/super-self>`, "Yes"
    :doc:`openmp-exception-escape <openmp/exception-escape>`,
    :doc:`openmp-use-default-none <openmp/use-default-none>`,
+   :doc:`performance-avoid-const-ref-copy <performance/avoid-const-ref-copy>`,
    :doc:`performance-avoid-endl <performance/avoid-endl>`, "Yes"
    :doc:`performance-enum-size <performance/enum-size>`,
    :doc:`performance-faster-string-find <performance/faster-string-find>`, "Yes"
@@ -397,10 +398,8 @@ Clang-Tidy Checks
    :doc:`readability-use-std-min-max <readability/use-std-min-max>`, "Yes"
    :doc:`zircon-temporary-objects <zircon/temporary-objects>`,
 
-Check aliases
--------------
 
-.. csv-table::
+.. csv-table:: Aliases..
    :header: "Name", "Redirect", "Offers fixes"
 
    :doc:`bugprone-narrowing-conversions <bugprone/narrowing-conversions>`, :doc:`cppcoreguidelines-narrowing-conversions <cppcoreguidelines/narrowing-conversions>`,

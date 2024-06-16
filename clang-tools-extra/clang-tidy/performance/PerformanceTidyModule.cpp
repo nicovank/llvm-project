@@ -9,6 +9,7 @@
 #include "../ClangTidy.h"
 #include "../ClangTidyModule.h"
 #include "../ClangTidyModuleRegistry.h"
+#include "AvoidConstRefCopyCheck.h"
 #include "AvoidEndlCheck.h"
 #include "EnumSizeCheck.h"
 #include "FasterStringFindCheck.h"
@@ -35,6 +36,8 @@ namespace performance {
 class PerformanceModule : public ClangTidyModule {
 public:
   void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
+    CheckFactories.registerCheck<AvoidConstRefCopyCheck>(
+        "performance-avoid-const-ref-copy");
     CheckFactories.registerCheck<AvoidEndlCheck>("performance-avoid-endl");
     CheckFactories.registerCheck<EnumSizeCheck>("performance-enum-size");
     CheckFactories.registerCheck<FasterStringFindCheck>(
