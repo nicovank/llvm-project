@@ -18,6 +18,9 @@ import textwrap
 # FIXME Python 3.9: Replace typing.Tuple with builtins.tuple.
 from typing import Optional, Tuple
 
+# FIXME Python 3.9: Replace typing.Tuple with builtins.tuple.
+from typing import Optional, Tuple
+
 
 # Adapts the module's CMakelist file. Returns 'True' if it could add a new
 # entry and 'False' if the entry already existed.
