@@ -240,7 +240,7 @@ int testMacroExpansion(std::unordered_set<int> &MySet) {
   return 0;
 }
 
-// The following map has the same interface like `std::map`.
+// The following map has the same interface as `std::map`.
 template <class Key, class T>
 struct CustomMap {
   unsigned count(const Key &K) const;
@@ -249,13 +249,30 @@ struct CustomMap {
   void *end();
 };
 
-// The clang-tidy check is currently hard-coded against the `std::` containers
-// and hence won't annotate the following instance. We might change this in the
-// future and also detect the following case.
-void *testDifferentCheckTypes(CustomMap<int, int> &MyMap) {
-  if (MyMap.count(0))
-    // NO-WARNING.
-    // CHECK-FIXES: if (MyMap.count(0))
-    return nullptr;
-  return MyMap.find(2);
+void testDifferentCheckTypes(CustomMap<int, int> &MyMap) {
+  if (MyMap.count(0)) {};
+  // CHECK-MESSAGES: :[[@LINE-1]]:{{[0-9]+}}: warning: use 'contains' to check for membership [readability-container-contains]
+  // CHECK-FIXES: if (MyMap.contains(0)) {};
+
+  MyMap.find(0) != MyMap.end();
+  // CHECK-MESSAGES: :[[@LINE-1]]:{{[0-9]+}}: warning: use 'contains' to check for membership [readability-container-contains]
+  // CHECK-FIXES: MyMap.contains(0);
+}
+
+struct MySubmap : public CustomMap<int, int> {};
+
+void testSubclass(MySubmap& MyMap) {
+  if (MyMap.count(0)) {};
+  // CHECK-MESSAGES: :[[@LINE-1]]:{{[0-9]+}}: warning: use 'contains' to check for membership [readability-container-contains]
+  // CHECK-FIXES: if (MyMap.contains(0)) {};
+}
+
+using UsingMap = CustomMap<int, int>;
+struct MySubmap2 : public UsingMap {};
+using UsingMap2 = MySubmap2;
+
+void testUsing(UsingMap2& MyMap) {
+  if (MyMap.count(0)) {};
+  // CHECK-MESSAGES: :[[@LINE-1]]:{{[0-9]+}}: warning: use 'contains' to check for membership [readability-container-contains]
+  // CHECK-FIXES: if (MyMap.contains(0)) {};
 }

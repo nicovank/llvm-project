@@ -15,26 +15,25 @@ using namespace clang::ast_matchers;
 namespace clang::tidy::readability {
 
 void ContainerContainsCheck::registerMatchers(MatchFinder *Finder) {
-  const auto SupportedContainers = hasType(
-      hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(
-          hasAnyName("::std::set", "::std::unordered_set", "::std::map",
-                     "::std::unordered_map", "::std::multiset",
-                     "::std::unordered_multiset", "::std::multimap",
-                     "::std::unordered_multimap"))))));
+  const auto HasContainsMethod = hasMethod(cxxMethodDecl(hasName("contains")));
+  const auto ContainerWithContains = hasType(
+      hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(anyOf(
+          HasContainsMethod, hasAnyBase(hasType(hasCanonicalType(hasDeclaration(
+                                 cxxRecordDecl(HasContainsMethod)))))))))));
 
   const auto CountCall =
-      cxxMemberCallExpr(on(SupportedContainers),
+      cxxMemberCallExpr(on(ContainerWithContains),
                         callee(cxxMethodDecl(hasName("count"))),
                         argumentCountIs(1))
           .bind("call");
 
   const auto FindCall =
-      cxxMemberCallExpr(on(SupportedContainers),
+      cxxMemberCallExpr(on(ContainerWithContains),
                         callee(cxxMethodDecl(hasName("find"))),
                         argumentCountIs(1))
           .bind("call");
 
-  const auto EndCall = cxxMemberCallExpr(on(SupportedContainers),
+  const auto EndCall = cxxMemberCallExpr(on(ContainerWithContains),
                                          callee(cxxMethodDecl(hasName("end"))),
                                          argumentCountIs(0));
 

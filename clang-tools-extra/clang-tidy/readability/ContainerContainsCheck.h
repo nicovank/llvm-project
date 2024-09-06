@@ -24,10 +24,8 @@ public:
       : ClangTidyCheck(Name, Context) {}
   void registerMatchers(ast_matchers::MatchFinder *Finder) final;
   void check(const ast_matchers::MatchFinder::MatchResult &Result) final;
-
-protected:
   bool isLanguageVersionSupported(const LangOptions &LO) const final {
-    return LO.CPlusPlus20;
+    return LO.CPlusPlus;
   }
 };
 
