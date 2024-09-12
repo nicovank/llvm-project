@@ -14,29 +14,81 @@ using namespace clang::ast_matchers;
 
 namespace clang::tidy::readability {
 
+namespace {
+struct NotMatchingBoundType {
+  NotMatchingBoundType(std::string ArgumentTypeBoundID, DynTypedNode Node)
+      : ArgumentTypeBoundID(std::move(ArgumentTypeBoundID)),
+        Node(std::move(Node)) {}
+  bool operator()(const ast_matchers::internal::BoundNodesMap &Nodes) const {
+    const Type *ParamType = Node.get<Type>();
+    const Type *ArgType = Nodes.getNodeAs<Type>(ArgumentTypeBoundID);
+    if (!ParamType || !ArgType) {
+      return true;
+    }
+
+    ParamType = ParamType->getUnqualifiedDesugaredType();
+    ArgType = ArgType->getUnqualifiedDesugaredType();
+
+    if (ParamType->isReferenceType()) {
+      ParamType = ParamType->getPointeeType()->getUnqualifiedDesugaredType();
+    }
+
+    while (ParamType->isPointerType()) {
+      if (!ArgType->isPointerType()) {
+        return true;
+      }
+
+      ParamType = ParamType->getPointeeType()->getUnqualifiedDesugaredType();
+      ArgType = ArgType->getPointeeType()->getUnqualifiedDesugaredType();
+    }
+
+    return ParamType != ArgType;
+  }
+
+private:
+  std::string ArgumentTypeBoundID;
+  DynTypedNode Node;
+};
+
+AST_MATCHER_P(Type, matchesBoundType, std::string, ArgumentTypeBoundID) {
+  return Builder->removeBindings(
+      NotMatchingBoundType(ArgumentTypeBoundID, DynTypedNode::create(Node)));
+}
+} // namespace
+
 void ContainerContainsCheck::registerMatchers(MatchFinder *Finder) {
-  const auto SupportedContainers = hasType(
-      hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(
-          hasAnyName("::std::set", "::std::unordered_set", "::std::map",
-                     "::std::unordered_map", "::std::multiset",
-                     "::std::unordered_multiset", "::std::multimap",
-                     "::std::unordered_multimap"))))));
+  const auto HasContainsMethod = hasMethod(cxxMethodDecl(
+      isConst(), parameterCountIs(1), returns(booleanType()),
+      hasName("contains"), unless(isDeleted()), isPublic(),
+      hasParameter(0, hasType(matchesBoundType("argumentType")))));
+  const auto ContainerWithContains = hasType(
+      hasUnqualifiedDesugaredType(recordType(hasDeclaration(cxxRecordDecl(anyOf(
+          HasContainsMethod, hasAnyBase(hasType(hasCanonicalType(hasDeclaration(
+                                 cxxRecordDecl(HasContainsMethod)))))))))));
+
+  // Hack in CountCall and FindCall: hasArgument(0, ...) always ignores implicit
+  // casts. We do not want this behavior. We use hasAnyArgument instead, which
+  // does not ignore implicit casts. Thankfully, we only have one argument in
+  // every case making this possible. Really, hasArgument should also respect
+  // the current traversal mode. GitHub issues #54919 and #75754 track this.
 
   const auto CountCall =
-      cxxMemberCallExpr(on(SupportedContainers),
+      cxxMemberCallExpr(argumentCountIs(1),
                         callee(cxxMethodDecl(hasName("count"))),
-                        argumentCountIs(1))
+                        hasAnyArgument(hasType(type().bind("argumentType"))),
+                        on(ContainerWithContains))
           .bind("call");
 
   const auto FindCall =
-      cxxMemberCallExpr(on(SupportedContainers),
+      cxxMemberCallExpr(argumentCountIs(1),
                         callee(cxxMethodDecl(hasName("find"))),
-                        argumentCountIs(1))
+                        hasAnyArgument(hasType(type().bind("argumentType"))),
+                        on(ContainerWithContains))
           .bind("call");
 
-  const auto EndCall = cxxMemberCallExpr(on(SupportedContainers),
+  const auto EndCall = cxxMemberCallExpr(argumentCountIs(0),
                                          callee(cxxMethodDecl(hasName("end"))),
-                                         argumentCountIs(0));
+                                         on(ContainerWithContains));
 
   const auto Literal0 = integerLiteral(equals(0));
   const auto Literal1 = integerLiteral(equals(1));
