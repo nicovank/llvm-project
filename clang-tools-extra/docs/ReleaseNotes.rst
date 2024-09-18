@@ -167,7 +167,8 @@ Changes in existing checks
 
 - Improved :doc:`readability-container-contains
   <clang-tidy/checks/readability/container-contains>` check to let it work on
-  any class that has a ``contains`` method.
+  any class that has a ``contains`` method. Also now match previously missing
+  cases with uncommon operand ordering.
 
 - Improved :doc:`readability-implicit-bool-conversion
   <clang-tidy/checks/readability/implicit-bool-conversion>` check
