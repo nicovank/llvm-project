@@ -121,6 +121,17 @@ New checks
   Gives warnings for tagged unions, where the number of tags is
   different from the number of data members inside the union.
 
+- New :doc:`performance-expensive-flat-container-operation
+  <clang-tidy/checks/performance/expensive-flat-container-operation>` check.
+
+  Warns when calling an O(N) operation on a flat container.
+
+- New :doc:`portability-template-virtual-member-function
+  <clang-tidy/checks/portability/template-virtual-member-function>` check.
+
+  Finds cases when an uninstantiated virtual member function in a template class 
+  causes cross-compiler incompatibility.
+
 New check aliases
 ^^^^^^^^^^^^^^^^^
 
@@ -198,11 +209,13 @@ Changes in existing checks
 
 - Improved :doc:`modernize-use-std-format
   <clang-tidy/checks/modernize/use-std-format>` check to support replacing
-  member function calls too.
+  member function calls too and to only expand macros starting with ``PRI``
+  and ``__PRI`` from ``<inttypes.h>`` in the format string.
 
 - Improved :doc:`modernize-use-std-print
   <clang-tidy/checks/modernize/use-std-print>` check to support replacing
-  member function calls too.
+  member function calls too and to only expand macros starting with ``PRI``
+  and ``__PRI`` from ``<inttypes.h>`` in the format string.
 
 - Improved :doc:`performance-avoid-endl
   <clang-tidy/checks/performance/avoid-endl>` check to use ``std::endl`` as
