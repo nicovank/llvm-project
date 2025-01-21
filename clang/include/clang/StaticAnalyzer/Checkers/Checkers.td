@@ -809,6 +809,10 @@ def IteratorRangeChecker : Checker<"IteratorRange">,
   Dependencies<[IteratorModeling]>,
   Documentation<HasDocumentation>;
 
+def MapDoubleLookupChecker : Checker<"MapDoubleLookup">,
+  HelpText<"Reports double lookups in maps.">,
+  Documentation<HasDocumentation>;
+
 def MismatchedIteratorChecker : Checker<"MismatchedIterator">,
   HelpText<"Check for use of iterators of different containers where iterators "
            "of the same container are expected">,

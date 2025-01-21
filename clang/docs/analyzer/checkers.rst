@@ -2982,6 +2982,29 @@ Check for iterators used outside their valid ranges.
    *i; // warn: iterator accessed outside of its range
  }
 
+.. _alpha-cplusplus-MapDoubleLookup:
+
+alpha.cplusplus.MapDoubleLookup (C++)
+""""""""""""""""""""""""""""""""""""""""""""""
+Reports double lookups in maps.
+
+.. code-block:: cpp
+
+ #include <unordered_map>
+
+ void f(std::unordered_map<int, int>& map) {
+  auto it = map.find(0);
+  if (it != map.end()) {
+    it = map.emplace(0, 0).first; // warn: double lookup of '0' in 'map'
+  }
+ }
+
+ void g(std::unordered_map<int, SomeStruct>& map) {
+  map[0].a = 0;
+  map[0].b = 1; // warn: double lookup of '0' in 'map'
+  map[0].c = 2; // warn: double lookup of '0' in 'map'
+ }
+
 .. _alpha-cplusplus-MismatchedIterator:
 
 alpha.cplusplus.MismatchedIterator (C++)

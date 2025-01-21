@@ -63,6 +63,7 @@ add_clang_library(clangStaticAnalyzerCheckers
   MacOSXAPIChecker.cpp
   MallocChecker.cpp
   MallocSizeofChecker.cpp
+  MapDoubleLookup.cpp
   MismatchedIteratorChecker.cpp
   MmapWriteExecChecker.cpp
   MIGChecker.cpp
