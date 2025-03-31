@@ -91,6 +91,12 @@ Improvements to clang-query
 Improvements to clang-tidy
 --------------------------
 
+- Changed the :program:`check_clang_tidy.py` tool to use FileCheck's
+  ``--match-full-lines`` instead of ``strict-whitespace`` for ``CHECK-FIXES``
+  clauses. Added a ``--match-partial-fixes`` option to keep previous behavior on
+  specific tests. This may break tests for users with custom out-of-tree checks
+  who use :program:`check_clang_tidy.py` as-is.
+
 - Improved :program:`clang-tidy-diff.py` script. Add the `-warnings-as-errors`
   argument to treat warnings as errors.
 
@@ -146,7 +152,8 @@ Changes in existing checks
   `AllowedTypes`, that excludes specified types from const-correctness
   checking and fixing false positives when modifying variant by ``operator[]``
   with template in parameters and supporting to check pointee mutation by
-  `AnalyzePointers` option.
+  `AnalyzePointers` option and fixing false positives when using const array
+  type.
 
 - Improved :doc:`misc-redundant-expression
   <clang-tidy/checks/misc/redundant-expression>` check by providing additional
@@ -158,7 +165,9 @@ Changes in existing checks
 
 - Improved :doc:`misc-use-internal-linkage
   <clang-tidy/checks/misc/use-internal-linkage>` check by fix false positives
-  for function or variable in header file which contains macro expansion.
+  for function or variable in header file which contains macro expansion and
+  excluding variables with ``thread_local`` storage class specifier from being
+  matched.
 
 - Improved :doc:`modernize-use-default-member-init
   <clang-tidy/checks/modernize/use-default-member-init>` check by matching
