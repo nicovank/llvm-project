@@ -36,6 +36,7 @@ http://clang.llvm.org/docs/HowToSetupToolingForLLVM.html
 
 import argparse
 import asyncio
+import collections
 from dataclasses import dataclass
 import glob
 import json
@@ -105,6 +106,7 @@ def get_tidy_invocation(
     warnings_as_errors: Optional[str],
     exclude_header_filter: Optional[str],
     allow_no_checks: bool,
+    profiles_dir: Optional[str],
 ) -> List[str]:
     """Gets a command line for clang-tidy."""
     start = [clang_tidy_binary]
@@ -149,6 +151,9 @@ def get_tidy_invocation(
         start.append("--allow-no-checks")
     if f:
         start.append(f)
+    if profiles_dir:
+        start.append("--enable-check-profile")
+        start.append(f"--store-check-profile={profiles_dir}")
     return start
 
 
@@ -240,6 +245,7 @@ async def run_tidy(
     clang_tidy_binary: str,
     tmpdir: str,
     build_path: str,
+    profiles_dir: Optional[str],
 ) -> ClangTidyResult:
     """
     Runs clang-tidy on a single file and returns the result.
@@ -263,6 +269,7 @@ async def run_tidy(
         args.warnings_as_errors,
         args.exclude_header_filter,
         args.allow_no_checks,
+        profiles_dir,
     )
 
     try:
@@ -286,6 +293,46 @@ async def run_tidy(
         stderr.decode("UTF-8"),
         end - start,
     )
+
+
+def report_aggregated_profiles(profiles_dir: str) -> None:
+    files = os.listdir(profiles_dir)
+    print(f"Aggregating {len(files)} profiles...")
+
+    profiles = collections.defaultdict(lambda: {"wall": 0, "user": 0, "sys": 0})
+    for profile in files:
+        with open(os.path.join(profiles_dir, profile)) as f:
+            data = json.load(f)
+            for key, value in data["profile"].items():
+                _, _, check, time = key.split(".")
+                profiles[check][time] += value
+
+    total = {
+        time: sum(v[time] for v in profiles.values())
+        for time in ["wall", "user", "sys"]
+    }
+
+    print("=" * 3 + "-" * 73 + "=" * 3)
+    print(" " * 26 + "clang-tidy checks profiling" + " " * 26)
+    print("=" * 3 + "-" * 73 + "=" * 3)
+
+    print(
+        "---User Time---",
+        "--System Time--",
+        "--User+System--",
+        "---Wall Time---",
+        "--- Name ---",
+        sep="   ",
+    )
+    for k, v in sorted(profiles.items(), key=lambda x: x[1]["wall"], reverse=True):
+        print(
+            f"{v['user']:.4f} ({100 * v['user'] / total['user']:5.1f}%)",
+            f"{v['sys']:.4f} ({100 * v['sys'] / total['sys']:5.1f}%)",
+            f"{v['user'] + v['sys']:.4f} ({100 * (v['user'] + v['sys']) / (total['user'] + total['sys']):5.1f}%)",
+            f"{v['wall']:.4f} ({100 * v['wall'] / total['wall']:5.1f}%)",
+            k,
+            sep="   ",
+        )
 
 
 async def main() -> None:
@@ -447,6 +494,11 @@ async def main() -> None:
         action="store_true",
         help="Allow empty enabled checks.",
     )
+    parser.add_argument(
+        "-enable-check-profile",
+        action="store_true",
+        help="Enable per-check timing profiles, aggregate and print results on exit.",
+    )
     args = parser.parse_args()
 
     db_path = "compile_commands.json"
@@ -489,6 +541,8 @@ async def main() -> None:
         export_fixes_dir = tempfile.mkdtemp()
         delete_fixes_dir = True
 
+    profiles_dir = tempfile.mkdtemp() if args.enable_check_profile else None
+
     try:
         invocation = get_tidy_invocation(
             None,
@@ -509,6 +563,7 @@ async def main() -> None:
             args.warnings_as_errors,
             args.exclude_header_filter,
             args.allow_no_checks,
+            None,
         )
         invocation.append("-list-checks")
         invocation.append("-")
@@ -567,6 +622,7 @@ async def main() -> None:
                 clang_tidy_binary,
                 export_fixes_dir,
                 build_path,
+                profiles_dir if args.enable_check_profile else None,
             )
         )
         for f in files
@@ -593,6 +649,9 @@ async def main() -> None:
         if delete_fixes_dir:
             assert export_fixes_dir
             shutil.rmtree(export_fixes_dir)
+        if profiles_dir:
+            report_aggregated_profiles(profiles_dir)
+            shutil.rmtree(profiles_dir)
         return
 
     if combine_fixes:
@@ -618,6 +677,11 @@ async def main() -> None:
     if delete_fixes_dir:
         assert export_fixes_dir
         shutil.rmtree(export_fixes_dir)
+
+    if profiles_dir:
+        report_aggregated_profiles(profiles_dir)
+        shutil.rmtree(profiles_dir)
+
     sys.exit(returncode)
 
 
