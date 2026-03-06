@@ -428,11 +428,6 @@ void ContainerSizeEmptyCheck::check(const MatchFinder::MatchResult &Result) {
     if (CTS->getSpecializationKind() == TSK_ImplicitInstantiation)
       Container = CTS->getSpecializedTemplate();
   }
-  const auto *Empty = Result.Nodes.getNodeAs<FunctionDecl>("empty");
-
-  diag(Empty->getLocation(), "method %0::empty() defined here",
-       DiagnosticIDs::Note)
-      << Container;
 }
 
 } // namespace clang::tidy::readability
