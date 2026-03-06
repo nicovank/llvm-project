@@ -292,7 +292,8 @@ Changes in existing checks
 
 - Improved :doc:`readability-container-size-empty
   <clang-tidy/checks/readability/container-size-empty>` check by fixing a crash
-  when a member expression has a non-identifier name.
+  when a member expression has a non-identifier name, and reducing verbosity by
+  removing the note indicating source location of the ``empty`` function.
 
 - Improved :doc:`readability-else-after-return
   <clang-tidy/checks/readability/else-after-return>` check by fixing missed
